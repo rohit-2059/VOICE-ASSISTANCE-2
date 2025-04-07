@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Voice Shopping Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        ai: {
+                            purple: '#8B5CF6',
+                            blue: '#3B82F6',
+                            teal: '#14B8A6',
+                            pink: '#EC4899',
+                            indigo: '#6366F1'
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'spin-slow': 'spin 6s linear infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes wave {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.5); opacity: 0.4; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        
+        .wave-animation {
+            position: absolute;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.5), rgba(59, 130, 246, 0.5));
+            width: 100%;
+            height: 100%;
+            animation: wave 2s infinite;
+        }
+        
+        .wave-animation:nth-child(2) {
+            animation-delay: 0.5s;
+        }
+        
+        .wave-animation:nth-child(3) {
+            animation-delay: 1s;
+        }
+
+        .platform-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            background-color: rgba(139, 92, 246, 0.1);
+            color: #8B5CF6;
+            transition: all 0.2s;
+        }
+
+        .platform-badge:hover {
+            background-color: rgba(139, 92, 246, 0.2);
+            border-color: rgba(139, 92, 246, 0.5);
+        }
+
+        .dark .platform-badge {
+            background-color: rgba(139, 92, 246, 0.2);
+            border-color: rgba(139, 92, 246, 0.4);
+            color: #A78BFA;
+        }
+
+        .dark .platform-badge:hover {
+            background-color: rgba(139, 92, 246, 0.3);
+            border-color: rgba(139, 92, 246, 0.6);
+        }
+
+        .ai-gradient-bg {
+            background: linear-gradient(135deg, #8B5CF6, #3B82F6, #14B8A6);
+            background-size: 200% 200%;
+            animation: gradient 15s ease infinite;
+        }
+
+        .ai-gradient-text {
+            background: linear-gradient(to right, #8B5CF6, #3B82F6, #14B8A6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .glassmorphism {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .dark .glassmorphism {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .visualizer-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 60px;
+            width: 200px;
+            margin: 0 auto;
+        }
+
+        .visualizer-bar {
+            width: 4px;
+            margin: 0 2px;
+            border-radius: 2px;
+            background: linear-gradient(to top, #8B5CF6, #3B82F6);
+            transition: height 0.1s ease;
+        }
+
+        /* Floating elements */
+        .floating-element {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(10px);
+            opacity: 0.5;
+            z-index: -1;
+        }
+
+        .floating-element-1 {
+            width: 150px;
+            height: 150px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.6), rgba(139, 92, 246, 0));
+            top: 10%;
+            right: 10%;
+            animation: float 8s ease-in-out infinite;
+        }
+
+        .floating-element-2 {
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.6), rgba(59, 130, 246, 0));
+            bottom: 20%;
+            left: 10%;
+            animation: float 6s ease-in-out infinite reverse;
+        }
+
+        .floating-element-3 {
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, rgba(20, 184, 166, 0.6), rgba(20, 184, 166, 0));
+            top: 40%;
+            left: 5%;
+            animation: float 10s ease-in-out infinite;
+        }
+
+        /* Mic button styles */
+        .mic-button {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #8B5CF6, #3B82F6);
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+            margin: 0 auto;
+        }
+
+        .mic-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.7);
+        }
+
+        .mic-button:active {
+            transform: scale(0.95);
+        }
+
+        .mic-button.listening {
+            animation: pulse 2s infinite;
+        }
+
+        .mic-button.listening::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: rgba(139, 92, 246, 0.3);
+            animation: wave 2s infinite;
+        }
+
+        .mic-button.listening::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: rgba(139, 92, 246, 0.3);
+            animation: wave 2s infinite 0.5s;
+        }
+
+        /* Ring around mic button */
+        .mic-ring {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            animation: spin-slow 10s linear infinite;
+        }
+
+        .mic-ring::before, .mic-ring::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #8B5CF6;
+        }
+
+        .mic-ring::before {
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .mic-ring::after {
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .mic-ring-2 {
+            position: absolute;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            border: 1px dashed rgba(59, 130, 246, 0.3);
+            animation: spin-slow 15s linear infinite reverse;
+        }
+
+        /* Status panel */
+        .status-panel {
+            max-width: 400px;
+            margin: 20px auto;
+            padding: 15px;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        /* Result animation */
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .slide-up {
+            animation: slideUp 0.3s ease forwards;
+        }
+
+        /* Reset button */
+        .reset-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .reset-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .dark .reset-button {
+            background: rgba(15, 23, 42, 0.7);
+        }
+
+        .dark .reset-button:hover {
+            background: rgba(15, 23, 42, 0.9);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 transition-colors duration-200 min-h-screen flex flex-col items-center justify-center">
+    <div id="canvas-container"></div>
+
+    <div class="container mx-auto px-4 py-8 relative flex flex-col items-center justify-center min-h-screen">
+        <div class="floating-element floating-element-1"></div>
+        <div class="floating-element floating-element-2"></div>
+        <div class="floating-element floating-element-3"></div>
+        
+        <div class="absolute top-4 left-4 flex items-center gap-2">
+            <h1 class="text-2xl font-bold ai-gradient-text">Voice Shop</h1>
+            <div class="w-2 h-2 rounded-full bg-ai-teal animate-pulse"></div>
+        </div>
+        
+        <button id="theme-toggle" class="absolute top-4 right-4 p-2 rounded-lg glassmorphism shadow-md z-10">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-700 dark:text-slate-200 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-200 dark:text-yellow-300 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+        </button>
+
+        <div class="text-center mb-8">
+            <h2 class="text-3xl font-bold ai-gradient-text mb-2">AI Shopping Assistant</h2>
+            <p class="text-slate-600 dark:text-slate-300">Tap the mic and speak to search for products</p>
+        </div>
+
+        <div class="relative mb-8">
+            <div class="mic-ring"></div>
+            <div class="mic-ring-2"></div>
+            <button id="start-button" class="mic-button">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+            </button>
+        </div>
+
+        <div id="visualizer-container" class="visualizer-container hidden mb-4">
+            <!-- Voice visualizer bars will be added here dynamically -->
+        </div>
+
+        <div id="status-container" class="status-panel glassmorphism hidden mb-4 text-center">
+            <p id="status" class="text-lg font-medium text-slate-700 dark:text-slate-300"></p>
+        </div>
+
+        <div id="search-result" class="w-full max-w-md hidden">
+            <div class="relative mb-4">
+                <input 
+                    type="text" 
+                    id="searchQuery" 
+                    readonly 
+                    placeholder="Your product will appear here..." 
+                    class="w-full px-4 py-3 rounded-lg border border-slate-300/50 dark:border-slate-600/50 bg-white/50 dark:bg-slate-800/50 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-ai-purple pr-10 backdrop-blur-sm text-center"
+                >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute right-3 top-3.5 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </div>
+        </div>
+
+        <div id="platforms-container" class="hidden mt-2 text-center">
+            <p class="text-slate-600 dark:text-slate-300 mb-2">Select a platform:</p>
+            <div id="platforms" class="flex flex-wrap justify-center gap-2">
+                <span class="platform-badge">Google</span>
+                <span class="platform-badge">Amazon</span>
+                <span class="platform-badge">Flipkart</span>
+                <span class="platform-badge">Myntra</span>
+                <span class="platform-badge">Ajio</span>
+                <span class="platform-badge">Croma</span>
+                <span class="platform-badge">TATA cliq</span>
+                <span class="platform-badge">Reliance Digital</span>
+                <span class="platform-badge">Meesho</span>
+                <span class="platform-badge">Big Basket</span>
+                <span class="platform-badge">Nykaa</span>
+            </div>
+        </div>
+
+        <div id="result-container" class="status-panel glassmorphism hidden mt-4 slide-up"></div>
+
+        <button 
+            id="reset-button" 
+            class="mt-6 px-4 py-2 rounded-lg border border-slate-300/50 dark:border-slate-600/50 text-slate-700 dark:text-slate-300 hover:bg-white/20 dark:hover:bg-slate-700/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm hidden"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Reset
+        </button>
+    </div>
+
+    <script>
+        
+        // Create 3D background animation
+        const createBackground3D = () => {
+            const container = document.getElementById('canvas-container');
+            
+            // Create scene, camera, and renderer
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+            
+            // Create particles
+            const particlesGeometry = new THREE.BufferGeometry();
+            const particlesCount = 1000;
+            
+            const posArray = new Float32Array(particlesCount * 3);
+            for(let i = 0; i < particlesCount * 3; i++) {
+                posArray[i] = (Math.random() - 0.5) * 10;
+            }
+            
+            particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            
+            // Create material with custom colors
+            const particlesMaterial = new THREE.PointsMaterial({
+                size: 0.02,
+                transparent: true,
+                opacity: 0.8,
+                color: document.documentElement.classList.contains('dark') ? 0x8B5CF6 : 0x3B82F6
+            });
+            
+            // Create mesh
+            const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+            scene.add(particlesMesh);
+            
+            // Position camera
+            camera.position.z = 5;
+            
+            // Mouse movement effect
+            let mouseX = 0;
+            let mouseY = 0;
+            
+            document.addEventListener('mousemove', (event) => {
+                mouseX = event.clientX / window.innerWidth - 0.5;
+                mouseY = event.clientY / window.innerHeight - 0.5;
+            });
+
+            //
+            function startWakeWordListener() {
+                if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+                    console.error("Speech recognition not supported.");
+                    return;
+                }
+            
+                const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.lang = "en-US";
+                recognition.continuous = true;  // Keep listening
+            
+                recognition.onresult = (event) => {
+                    let text = event.results[event.results.length - 1][0].transcript.toLowerCase();
+                    console.log("Heard:", text);
+            
+                    if (text.includes("HEY")) {
+                        console.log("Wake word detected! Activating assistant...");
+                        fetch("/wake-up")  // Call Flask backend to confirm wake-up
+                            .then(response => response.json())
+                            .then(data => {
+                                console.log(data.message);
+                                document.getElementById("start-button").click(); // Simulate mic button press
+                            })
+                            .catch(error => console.error("Error triggering wake-up:", error));
+                    }
+                };
+            
+                recognition.onerror = (event) => console.error("Wake word listener error:", event);
+                recognition.start();
+            }
+            
+            // Start listening for "BUDDY" when page loads
+            window.onload = startWakeWordListener;
+            
+            // Animation loop
+            const animate = () => {
+                requestAnimationFrame(animate);
+                
+                // Rotate particles
+                particlesMesh.rotation.x += 0.0005;
+                particlesMesh.rotation.y += 0.0005;
+                
+                // Mouse interaction
+                particlesMesh.rotation.x += mouseY * 0.001;
+                particlesMesh.rotation.y += mouseX * 0.001;
+                
+                renderer.render(scene, camera);
+            };
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+            
+            // Start animation
+            animate();
+            
+            // Update particle color on theme change
+            const updateParticleColor = () => {
+                particlesMaterial.color.set(
+                    document.documentElement.classList.contains('dark') ? 0x8B5CF6 : 0x3B82F6
+                );
+            };
+            
+            return { updateParticleColor };
+        };
+        
+        // Create voice visualizer
+        const createVoiceVisualizer = () => {
+            const container = document.getElementById('visualizer-container');
+            const barCount = 20;
+            
+            // Create bars
+            for (let i = 0; i < barCount; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'visualizer-bar';
+                bar.style.height = '5px';
+                container.appendChild(bar);
+            }
+            
+            // Animate bars
+            const bars = container.querySelectorAll('.visualizer-bar');
+            
+            const animateBars = () => {
+                bars.forEach(bar => {
+                    const height = Math.random() * 50 + 5;
+                    bar.style.height = `${height}px`;
+                });
+            };
+            
+            let animationInterval = null;
+            
+            return {
+                start: () => {
+                    container.classList.remove('hidden');
+                    animationInterval = setInterval(animateBars, 100);
+                },
+                stop: () => {
+                    if (animationInterval) {
+                        clearInterval(animationInterval);
+                        animationInterval = null;
+                    }
+                    container.classList.add('hidden');
+                }
+            };
+        };
+
+        // Theme toggle functionality
+        const themeToggle = document.getElementById('theme-toggle');
+        
+        // Check for saved theme preference or use system preference
+        const savedTheme = localStorage.getItem('theme') || 
+            (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        
+        // Apply the theme
+        if (savedTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        
+        // Initialize 3D background
+        const background3D = createBackground3D();
+        
+        // Initialize voice visualizer
+        const voiceVisualizer = createVoiceVisualizer();
+        
+        // Toggle theme when button is clicked
+        themeToggle.addEventListener('click', () => {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+            
+            // Update particle color
+            background3D.updateParticleColor();
+        });
+
+        // Voice assistant functionality
+        let step = 1;
+        let productName = "";
+        let isListening = false;
+        let timeout;
+        
+        // DOM elements
+        const startButton = document.getElementById('start-button');
+        const resetButton = document.getElementById('reset-button');
+        const searchResult = document.getElementById('search-result');
+        const searchQueryInput = document.getElementById('searchQuery');
+        const statusContainer = document.getElementById('status-container');
+        const statusText = document.getElementById('status');
+        const platformsContainer = document.getElementById('platforms-container');
+        const resultContainer = document.getElementById('result-container');
+        
+        function startListening() {
+            if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+                updateStatus("Speech recognition not supported in your browser");
+                return;
+            }
+            
+            if (isListening) {
+                // Prevent multiple listening sessions
+                return;
+            }
+            
+            isListening = true;
+            updateButtonState();
+            voiceVisualizer.start();
+            
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = "en-US";
+        
+            recognition.onstart = () => {
+                updateStatus(step === 1 ? "Listening for product..." : "Listening for platform...");
+            };
+        
+            recognition.onresult = (event) => {
+                let text = event.results[0][0].transcript;
+                updateStatus("Processing...");
+        
+                if (step === 1) {
+                    productName = text;
+                    searchQueryInput.value = text;
+                    searchResult.classList.remove('hidden');
+                    step = 2;
+                    askForPlatform();
+                } else if (step === 2) {
+                    let platform = text.toLowerCase();
+                    searchProduct(productName, platform);
+                }
+            };
+        
+            recognition.onerror = () => {
+                isListening = false;
+                updateStatus("Error! Try Again.");
+                updateButtonState();
+                voiceVisualizer.stop();
+            };
+        
+            recognition.onend = () => {
+                isListening = false;
+                updateButtonState();
+                if (step !== 2) {
+                    voiceVisualizer.stop();
+                }
+            };
+        
+            recognition.start();
+        }
+        
+        function askForPlatform() {
+            // Voice prompt asking for platform
+            const utterance = new SpeechSynthesisUtterance("Which platform do you want to search on?");
+            utterance.onend = function() {
+                // After the voice prompt finishes, start listening for platform immediately
+                startListening(); // Start listening immediately after the prompt ends
+            };
+            window.speechSynthesis.speak(utterance);
+
+            updateStatus("Which platform do you want to search on?");
+            platformsContainer.classList.remove('hidden');
+            resetButton.classList.remove('hidden');
+            startTimeout('platform');
+        }
+        
+        function askForProduct() {
+            // Voice prompt asking for product
+            const utterance = new SpeechSynthesisUtterance("What product do you want to buy?");
+            utterance.onend = function() {
+                // After the voice prompt finishes, start listening for product immediately
+                startListening(); // Start listening immediately after the prompt ends
+            };
+            window.speechSynthesis.speak(utterance);
+
+            updateStatus("What product do you want to buy?");
+            startTimeout('product');
+        }
+        
+        function startTimeout(type) {
+            clearTimeout(timeout); // Clear any previous timeout
+
+            timeout = setTimeout(() => {
+                if (type === 'product') {
+                    updateStatus("Timeout! No product input detected. Process has been stopped.");
+                } else if (type === 'platform') {
+                    updateStatus("Timeout! No platform input detected. Process has been stopped.");
+                }
+                resetSearch(); // Reset the process
+            }, 10000); // 10 seconds timeout
+        }
+        
+        function searchProduct(sentence, platform) {
+            // Normalize the platform name (case insensitive)
+            const normalizedPlatform = platform.toLowerCase().trim();
+
+            // Define the platform mapping explicitly
+            let selectedPlatform = normalizedPlatform;
+
+            if (normalizedPlatform === "blinkit" || normalizedPlatform === "blink it") {
+                selectedPlatform = "blink it";  // Normalize to exact platform name for Blink It
+            } else if (normalizedPlatform === "amazon") {
+                selectedPlatform = "amazon";
+            } else if (normalizedPlatform === "flipkart") {
+                selectedPlatform = "flipkart";
+            } else if (normalizedPlatform === "myntra") {
+                selectedPlatform = "myntra";
+            } else if (normalizedPlatform === "tata cliq") {
+                selectedPlatform = "tata cliq";
+            } else if (normalizedPlatform === "croma") {
+                selectedPlatform = "croma";
+            } else if (normalizedPlatform === "reliance digital") {
+                selectedPlatform = "reliance digital";
+            } else if (normalizedPlatform === "meesho") {
+                selectedPlatform = "meesho";
+            } else if (normalizedPlatform === "nykaa") {
+                selectedPlatform = "nykaa";
+            } else if (normalizedPlatform === "big basket") {
+                selectedPlatform = "big basket";
+            } else if (normalizedPlatform === "blinkit") {
+                selectedPlatform = "blink it";
+            }
+
+            // Now that we have the correct platform, send the search request
+            fetch("/search", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sentence: sentence, platform: selectedPlatform })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showResult(`
+                        <div class="text-red-500 flex items-center gap-2 justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span class="font-bold">Error:</span> ${data.error}
+                        </div>
+                    `);
+                } else {
+                    showResult(`
+                        <div class="space-y-2 text-center">
+                            <h3 class="font-semibold flex items-center gap-2 justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>Product: ${data.product}</span>
+                            </h3>
+                            <p class="text-slate-700 dark:text-slate-300">Platform: ${data.platform}</p>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">
+                                Status: Search completed. Check your browser for results.
+                            </p>
+                        </div>
+                    `);
+                }
+                updateStatus("");
+                platformsContainer.classList.add('hidden');
+                step = 1;
+                resetButton.classList.remove('hidden');
+                voiceVisualizer.stop();
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                showResult(`
+                    <div class="text-red-500 flex items-center gap-2 justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="font-bold">Error:</span> Failed to connect to server
+                    </div>
+                `);
+                updateStatus("");
+                platformsContainer.classList.add('hidden');
+                step = 1;
+                resetButton.classList.remove('hidden');
+                voiceVisualizer.stop();
+            });
+        }
+        
+        function updateStatus(message) {
+            if (message) {
+                statusText.textContent = message;
+                statusContainer.classList.remove('hidden');
+            } else {
+                statusContainer.classList.add('hidden');
+            }
+        }
+        
+        function addToWishlist(product) {
+            fetch('/add-to-wishlist', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ product: product })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert("Error: " + data.error);
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        }
+        
+        function showResult(html) {
+            resultContainer.innerHTML = html;
+            resultContainer.classList.remove('hidden');
+            // Add animation class
+            resultContainer.classList.add('slide-up');
+            // Remove animation class after animation completes
+            setTimeout(() => {
+                resultContainer.classList.remove('slide-up');
+            }, 300);
+        }
+        
+        function updateButtonState() {
+            if (isListening) {
+                startButton.classList.add('listening');
+            } else {
+                startButton.classList.remove('listening');
+            }
+        }
+        
+        function resetSearch() {
+            searchQueryInput.value = "";
+            searchResult.classList.add('hidden');
+            resultContainer.classList.add('hidden');
+            statusContainer.classList.add('hidden');
+            platformsContainer.classList.add('hidden');
+            resetButton.classList.add('hidden');
+            voiceVisualizer.stop();
+            step = 1;
+            clearTimeout(timeout); // Clear timeout
+        }
+        
+        // Event listeners
+        startButton.addEventListener('click', () => {
+            if (step === 1) {
+                askForProduct(); // Ask for product before starting the listening
+            } else if (step === 2) {
+                askForPlatform(); // Ask for platform when moving to step 2
+            }
+        });
+        document.getElementById('search-button').addEventListener('click', function () {
+            const query = document.getElementById('user-input').value;
+        
+            fetch('/compare', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ sentence: query })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Comparison Results:", data);
+        
+                const outputDiv = document.getElementById('response-output');
+                outputDiv.innerHTML = `<h3>Comparing prices for: ${data.query}</h3>`;
+        
+                data.results.forEach(result => {
+                    if (result.error) {
+                        outputDiv.innerHTML += `<p><strong>${result.platform}:</strong> ${result.error}</p>`;
+                    } else {
+                        outputDiv.innerHTML += `
+                            <p>
+                                <strong>${result.platform}</strong>: ${result.title} - <span style="color:green">${result.price}</span>
+                            </p>
+                        `;
+                    }
+                });
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                document.getElementById('response-output').innerText = "Failed to fetch comparison.";
+            });
+        });
+        resetButton.addEventListener('click', resetSearch);
+        
+    </script>
+</body>
+</html>

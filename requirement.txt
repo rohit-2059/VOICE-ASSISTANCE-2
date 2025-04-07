@@ -1,0 +1,9 @@
+Flask==2.2.5
+selenium==4.11.2
+speechrecognition==3.8.1
+spacy==3.7.2
+requests==2.31.0
+urllib3==2.2.1
+setuptools==69.2.0
+wheel==0.43.0
+gunicorn==21.2.0
